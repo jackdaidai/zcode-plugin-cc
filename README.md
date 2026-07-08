@@ -1,5 +1,7 @@
 # ZCode plugin for Claude Code
 
+[English](README.md) · [简体中文](README.zh-CN.md)
+
 Use **ZCode** from inside **Claude Code** for code reviews or to delegate tasks to ZCode.
 
 This is a port of OpenAI's [`openai/codex-plugin-cc`](https://github.com/openai/codex-plugin-cc).
@@ -26,11 +28,21 @@ layer that talks to the coding agent was rewritten to speak the **ZCode Protocol
 
 ## Install (in Claude Code)
 
-Add this marketplace in Claude Code:
+### From a local directory
+
+If you have this repo checked out locally:
+
+```
+/plugin marketplace add /absolute/path/to/zcode-plugin-cc
+```
+
+### From GitHub
 
 ```
 /plugin marketplace add <your-github-user>/zcode-plugin-cc
 ```
+
+### Then
 
 Install the plugin:
 
@@ -41,6 +53,7 @@ Install the plugin:
 Reload plugins, then run:
 
 ```
+/reload-plugins
 /zcode:setup
 ```
 
@@ -53,10 +66,20 @@ Reload plugins, then run:
 A simple first run:
 
 ```
-/zcode:review --background
-/zcode:status
-/zcode:result
+/zcode:rescue What is 2+2? Reply with just the number.
 ```
+
+## Verified status
+
+End-to-end verified against ZCode 0.15.0 in Claude Code 2.1.201:
+
+| Check | Result |
+|---|---|
+| `/zcode:setup --json` | `ready: true`, ZCode 0.15.0, logged in |
+| `/zcode:rescue` (full ZCode turn) | correct answer, exit 0 |
+| `zcode:zcode-rescue` subagent | appears in `/agents`, callable via `Agent` tool |
+| background task + `/zcode:status` + `/zcode:result` | running → completed, result returned |
+| review context collection (git diff) | working |
 
 ## Usage
 
@@ -143,6 +166,15 @@ the turn completes asynchronously via `state.updated` notifications until
 
 There is no native reviewer in ZCode, so `/zcode:review` collects the git diff and runs a
 review as a read-only turn (the same approach the Codex plugin's adversarial review takes).
+
+### Limitations
+
+- `/zcode:review` can be slow (ZCode has no native reviewer, so it runs a read-only turn over
+  the collected git diff). Prefer `--background` for non-trivial diffs.
+- `/zcode:transfer` seeds a new ZCode session with a summary of the Claude conversation rather
+  than replaying it turn-by-turn (ZCode's app-server exposes no session-import RPC).
+- ZCode session resume may surface "historical model no longer available" if the session's model
+  was retired; start a fresh session in that case.
 
 ## License
 
