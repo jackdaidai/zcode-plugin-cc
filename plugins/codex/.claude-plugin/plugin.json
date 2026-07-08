@@ -1,0 +1,8 @@
+{
+  "name": "codex",
+  "version": "1.0.6-zcode.1",
+  "description": "Use Codex from ZCode to review code or delegate tasks.",
+  "author": {
+    "name": "OpenAI (original); ZCode port"
+  }
+}

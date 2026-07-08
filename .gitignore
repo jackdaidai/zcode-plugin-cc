@@ -1,0 +1,4 @@
+node_modules/
+plugins/codex/.generated/
+*.log
+.DS_Store

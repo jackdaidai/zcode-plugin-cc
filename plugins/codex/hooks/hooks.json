@@ -1,0 +1,27 @@
+{
+  "description": "ZCode lifecycle hooks for the Codex Companion: session startup tidy-up and optional stop-time review gate. (SessionEnd is intentionally omitted — ZCode only supports seven hook events and SessionEnd is not one of them.)",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/session-lifecycle-hook.mjs\" SessionStart",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/stop-review-gate-hook.mjs\"",
+            "timeout": 900
+          }
+        ]
+      }
+    ]
+  }
+}
