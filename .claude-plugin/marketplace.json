@@ -1,21 +1,17 @@
 {
-  "name": "codex-plugin-zcode",
-  "owner": {
-    "name": "ZCode port of openai/codex-plugin-cc"
-  },
+  "name": "zcode-plugin-cc",
+  "owner": { "name": "ZCode Plugin (port of openai/codex-plugin-cc)" },
   "metadata": {
-    "description": "Codex plugin to use in ZCode for delegation and code review.",
-    "version": "1.0.6-zcode.1"
+    "description": "Use ZCode from Claude Code for code review and task delegation.",
+    "version": "0.1.0"
   },
   "plugins": [
     {
-      "name": "codex",
-      "description": "Use Codex from ZCode to review code or delegate tasks.",
-      "version": "1.0.6-zcode.1",
-      "author": {
-        "name": "OpenAI (original); ZCode port"
-      },
-      "source": "./plugins/codex"
+      "name": "zcode",
+      "description": "Use ZCode from Claude Code to review code or delegate tasks.",
+      "version": "0.1.0",
+      "author": { "name": "ZCode Plugin (port of openai/codex-plugin-cc)" },
+      "source": "./plugins/zcode"
     }
   ]
 }

@@ -1,179 +1,149 @@
-# Codex plugin for ZCode
+# ZCode plugin for Claude Code
 
-Use Codex from inside ZCode for code reviews or to delegate tasks to Codex.
+Use **ZCode** from inside **Claude Code** for code reviews or to delegate tasks to ZCode.
 
-This is a **ZCode port** of OpenAI's [`openai/codex-plugin-cc`](https://github.com/openai/codex-plugin-cc)
-(originally written for Claude Code). The Codex runtime is host-agnostic, so nearly all of the
-original logic carries over unchanged; only the host-integration glue (hooks, session identity,
-session transfer) has been adapted to how ZCode works.
+This is a port of OpenAI's [`openai/codex-plugin-cc`](https://github.com/openai/codex-plugin-cc).
+The Codex plugin's architecture is `{engine}-plugin-{host}`: Codex engine + Claude Code host.
+This project keeps the **Claude Code host** and swaps the **engine from Codex to ZCode** — so
+the slash commands become `/zcode:review`, `/zcode:rescue`, etc. The host integration (Claude
+Code plugin conventions, hooks, `${CLAUDE_PLUGIN_ROOT}` tokens) is unchanged; only the engine
+layer that talks to the coding agent was rewritten to speak the **ZCode Protocol**.
 
 ## What You Get
 
-- `/codex:review` for a normal read-only Codex review
-- `/codex:adversarial-review` for a steerable challenge review
-- `/codex:rescue`, `/codex:transfer`, `/codex:status`, `/codex:result`, and `/codex:cancel` to delegate work, hand off sessions, and manage background jobs
-- `/codex:setup` to check readiness and optionally enable a stop-time review gate
+- `/zcode:review` — a read-only ZCode review of your current git state
+- `/zcode:adversarial-review` — a steerable challenge review
+- `/zcode:rescue`, `/zcode:transfer`, `/zcode:status`, `/zcode:result`, `/zcode:cancel` — delegate work, hand off sessions, and manage background jobs
+- `/zcode:setup` — check ZCode readiness and optionally enable a stop-time review gate
+- a `zcode:zcode-rescue` subagent
 
 ## Requirements
 
-- **ChatGPT subscription (incl. Free) or OpenAI API key.**
-  - Usage contributes to your Codex usage limits. [Learn more](https://developers.openai.com/codex/pricing).
-- **Node.js 22 or later** (the `/codex:transfer` command uses the built-in `node:sqlite` module, available in Node 22+; other commands work on Node 18.18+).
-- **Codex CLI installed and signed in.**
+- **Claude Code** (this is a Claude Code plugin — the host)
+- **ZCode CLI installed and signed in** (the engine). Verify with `zcode --version` and `zcode login`.
+  - ZCode ships its own runtime; there is nothing to `npm install`.
+- **Node.js 18.18 or later**
 
-## Install
+## Install (in Claude Code)
 
-ZCode recognizes the same plugin conventions Claude Code uses (`.claude-plugin/`, `commands/`,
-`skills/`, `hooks/`, `${CLAUDE_PLUGIN_ROOT}` / `${CLAUDE_PLUGIN_DATA}` tokens), so you install this
-just like any ZCode marketplace plugin.
-
-### From a local directory
-
-In ZCode: **Settings → Plugin Management → Discover → `+`** → choose **local directory** → point at
-this folder (`codex-plugin-zcode`). Then install the **codex** plugin from the
-**codex-plugin-zcode** marketplace and reload plugins.
-
-### From your own GitHub repo
-
-Push this folder to a repo, then:
-
-- **Settings → Plugin Management → Discover → `+`** → choose **GitHub repository** →
-  enter `your-name/codex-plugin-zcode`.
-
-After install, run:
+Add this marketplace in Claude Code:
 
 ```
-/codex:setup
+/plugin marketplace add <your-github-user>/zcode-plugin-cc
 ```
 
-`/codex:setup` reports whether Codex is ready. If Codex is missing and npm is available, it can
-offer to install Codex for you. If you prefer to install Codex yourself:
+Install the plugin:
 
-```bash
-npm install -g @openai/codex
+```
+/plugin install zcode@zcode-plugin-cc
 ```
 
-If Codex is installed but not signed in:
+Reload plugins, then run:
 
-```bash
-!codex login
+```
+/zcode:setup
+```
+
+`/zcode:setup` reports whether ZCode is ready. If ZCode is installed but not signed in:
+
+```
+!zcode login
 ```
 
 A simple first run:
 
 ```
-/codex:review --background
-/codex:status
-/codex:result
+/zcode:review --background
+/zcode:status
+/zcode:result
 ```
 
 ## Usage
 
-### `/codex:review`
+### `/zcode:review`
 
-Runs a normal Codex review on your current work (uncommitted changes by default; `--base <ref>`
-for branch review). Supports `--wait` and `--background`. Read-only.
-
-```
-/codex:review
-/codex:review --base main
-/codex:review --background
-```
-
-### `/codex:adversarial-review`
-
-Runs a **steerable** review that questions the chosen implementation and design. Same target
-selection as `/codex:review`, plus optional focus text after the flags. Read-only.
+Runs a read-only ZCode review of your current work (uncommitted changes by default; `--base <ref>`
+for branch review). Supports `--wait` and `--background`.
 
 ```
-/codex:adversarial-review
-/codex:adversarial-review --base main challenge whether this was the right caching and retry design
-/codex:adversarial-review --background look for race conditions
+/zcode:review
+/zcode:review --base main
+/zcode:review --background
 ```
 
-### `/codex:rescue`
+### `/zcode:adversarial-review`
 
-Hands a task to Codex (investigate a bug, try a fix, continue a previous task, take a cheaper pass
-with a smaller model). Supports `--background`, `--wait`, `--resume`, `--fresh`, `--model`, and
-`--effort`.
-
-```
-/codex:rescue investigate why the tests started failing
-/codex:rescue --resume apply the top fix from the last run
-/codex:rescue --model gpt-5.4-mini --effort medium investigate the flaky integration test
-/codex:rescue --background investigate the regression
-```
-
-Notes:
-- If you do not pass `--model` or `--effort`, Codex chooses its own defaults.
-- `spark` maps to `gpt-5.3-codex-spark`.
-- Follow-up rescue requests can continue the latest Codex task in the repo.
-
-### `/codex:transfer`
-
-Creates a persistent Codex thread from a ZCode session and prints a `codex resume <session-id>` command.
+A **steerable** review that questions the chosen implementation and design. Same target
+selection as `/zcode:review`, plus optional focus text after the flags. Read-only.
 
 ```
-/codex:transfer
-/codex:transfer --source sess_<id>
-/codex:transfer --source ~/.claude/projects/<...>/<id>.jsonl
+/zcode:adversarial-review
+/zcode:adversarial-review --base main challenge whether this was the right caching design
+/zcode:adversarial-review --background look for race conditions
 ```
 
-**ZCode-specific behavior:** with no arguments (or `--source sess_<id>`), this reads the
-conversation from `~/.zcode/cli/db/db.sqlite`, converts it into a Claude-format transcript on the
-fly, and imports it into Codex via Codex's external-agent session importer. With
-`--source <path-to-claude-jsonl>` it imports that Claude transcript directly.
+### `/zcode:rescue`
 
-> Transfer is best-effort: it depends on Codex's importer accepting the converted transcript.
-> If it fails, the error will tell you what to do.
-
-### `/codex:status`, `/codex:result`, `/codex:cancel`
+Hands a task to ZCode (investigate a bug, try a fix, continue a previous task). Supports
+`--background`, `--wait`, `--resume`, `--fresh`.
 
 ```
-/codex:status                 # active and recent Codex jobs for this repo
-/codex:status task-abc123
-/codex:result                 # final stored output of a finished job
-/codex:result task-abc123
-/codex:cancel                 # cancel an active background job
-/codex:cancel task-abc123
+/zcode:rescue investigate why the tests started failing
+/zcode:rescue --resume apply the top fix from the last run
+/zcode:rescue --background investigate the regression
 ```
 
-### `/codex:setup`
+### `/zcode:transfer`
 
-Checks whether Codex is installed and authenticated, and manages the optional review gate:
+Creates a ZCode session seeded with the current Claude Code conversation and prints a
+`zcode --resume <session-id>` command.
 
 ```
-/codex:setup
-/codex:setup --enable-review-gate
-/codex:setup --disable-review-gate
+/zcode:transfer
+/zcode:transfer --source ~/.claude/projects/<...>/<id>.jsonl
 ```
 
-When the review gate is enabled, a `Stop` hook runs a targeted Codex review based on the previous
-turn; if it finds issues, the stop is blocked so they can be addressed first.
+> Note: ZCode's app-server has no session-import RPC, so the prior Claude conversation is
+> seeded as context in a new ZCode session (turn history is summarized, not replayed
+> turn-by-turn). Continue it with `zcode --resume <session-id>`.
 
-> [!WARNING]
-> The review gate can create a long-running loop and drain usage limits quickly. Only enable it
-> when you plan to actively monitor the session.
+### `/zcode:status`, `/zcode:result`, `/zcode:cancel`
 
-## How this differs from the Claude Code version
+```
+/zcode:status                 # active and recent ZCode jobs for this repo
+/zcode:status task-abc123
+/zcode:result                 # final stored output of a finished job
+/zcode:cancel                 # cancel an active background job
+```
 
-The Codex runtime itself (the `scripts/` directory, ~5,300 lines) is unchanged. The differences are
-all in host integration:
+### `/zcode:setup`
 
-| Area | Claude Code original | This ZCode port |
+```
+/zcode:setup
+/zcode:setup --enable-review-gate
+/zcode:setup --disable-review-gate
+```
+
+## How the engine works
+
+The Codex original talks to `codex app-server` (a JSON-RPC server) via a long-lived broker
+process. This port talks to **`zcode app-server`** the same way. The ZCode Protocol was
+reverse-engineered from `zcode` 0.15.0 and differs from Codex's in three load-bearing ways:
+
+| Concern | Codex app-server | ZCode Protocol |
 |---|---|---|
-| **Hooks** | `SessionStart`, `SessionEnd`, `Stop` | `SessionStart`, `Stop` (ZCode has no `SessionEnd`; orphan broker/job cleanup runs on `SessionStart` instead) |
-| **Session id** | read from stdin `session_id`, exported via `CLAUDE_ENV_FILE` | read from ZCode-injected `${CLAUDE_SESSION_ID}` env var, with stdin fallback |
-| **`/codex:transfer`** | reads `~/.claude/projects/*.jsonl` directly | reads ZCode's SQLite store and converts to Claude format on the fly |
-| **`/codex:rescue`** | routes through a `codex:codex-rescue` subagent | calls the companion `task` runtime directly (the subagent is kept for hosts that load plugin subagents) |
-| **Manifests** | `.claude-plugin/plugin.json` | adds `.zcode-plugin/plugin.json` and a root `marketplace.json` (the `.claude-plugin/` files remain as a fallback) |
+| **Message framing** | JSON-RPC 2.0 (`{jsonrpc,id,method,params}`) | `{id,method,params}` — **no `jsonrpc` field** (it is rejected) |
+| **Handshake** | `initialize` / `initialized` | none — ready on connect; first call is `session/create` |
+| **Methods** | `thread/*`, `turn/*`, `review/*` | `session/*` (`session/create`, `session/send`, `session/read`, `session/resume`, `session/stop`, `session/list`) |
 
-## Codex integration
+A ZCode turn is **fire-and-forget**: `session/send` returns `{accepted:true}` immediately and
+the turn completes asynchronously via `state.updated` notifications until
+`reason === "prompt_completed"`. The assistant text is then read from `session/read`'s
+`messages[].parts[]` (`type:"text"`).
 
-The plugin wraps the [Codex app server](https://developers.openai.com/codex/app-server) using your
-global `codex` binary and [applies the same configuration](https://developers.openai.com/codex/config-basic).
-Configure the default model/effort in `~/.codex/config.toml` or a project-level `.codex/config.toml`.
+There is no native reviewer in ZCode, so `/zcode:review` collects the git diff and runs a
+review as a read-only turn (the same approach the Codex plugin's adversarial review takes).
 
 ## License
 
-Apache-2.0 (same as the upstream `openai/codex-plugin-cc`). See `LICENSE` and `NOTICE`.
+Apache-2.0 (same as the upstream `openai/codex-plugin-cc`). See `LICENSE`.
