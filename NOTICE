@@ -1,4 +1,26 @@
-Copyright 2026 OpenAI
+zcode-plugin-cc
+Copyright 2026 jackdaidai
+
+This project is a derivative work of OpenAI's codex-plugin-cc
+(https://github.com/openai/codex-plugin-cc), licensed under the Apache License 2.0.
+
+The original work is:
+    Copyright 2026 OpenAI
+    https://github.com/openai/codex-plugin-cc
+
+Substantial modifications have been made to adapt it from the Codex engine to the
+ZCode engine while keeping the Claude Code host layer:
+  - The engine layer (scripts/lib/app-server.mjs, scripts/lib/zcode.mjs, the broker)
+    was rewritten to speak the ZCode Protocol (reverse-engineered from `zcode app-server`)
+    instead of the Codex app-server JSON-RPC protocol.
+  - All slash commands, agents, skills, and prompts were rebranded from /codex:* to
+    /zcode:* and from "Codex" to "ZCode".
+  - /zcode:review runs as a read-only turn over collected git context (ZCode has no
+    native reviewer); /zcode:transfer seeds a new ZCode session (ZCode exposes no
+    session-import RPC).
+
+This derivative work was written with ZCode (powered by the GLM-5.2 model from Z.ai)
+and refined with human assistance.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.

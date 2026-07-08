@@ -176,6 +176,20 @@ review as a read-only turn (the same approach the Codex plugin's adversarial rev
 - ZCode session resume may surface "historical model no longer available" if the session's model
   was retired; start a fresh session in that case.
 
+## Acknowledgements
+
+This project is a **derivative work** of OpenAI's
+[`openai/codex-plugin-cc`](https://github.com/openai/codex-plugin-cc) (Apache-2.0). The
+Claude Code host layer, the job/runner state machine, and the overall plugin structure are
+carried over from that project; credit for the original design belongs to its authors.
+
+The engine layer was rewritten to swap the underlying coding agent from Codex to ZCode
+(by reverse-engineering the ZCode Protocol spoken by `zcode app-server`). See `NOTICE` for
+the full derivative-work attribution as required by the Apache License.
+
+This derivative work was **written with ZCode** (powered by the **GLM-5.2** model from Z.ai)
+and refined with human assistance.
+
 ## License
 
-Apache-2.0 (same as the upstream `openai/codex-plugin-cc`). See `LICENSE`.
+Apache-2.0 (same as the upstream `openai/codex-plugin-cc`). See `LICENSE` and `NOTICE`.
