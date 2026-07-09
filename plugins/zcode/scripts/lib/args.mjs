@@ -77,17 +77,21 @@ export function splitRawArgumentString(raw) {
   const tokens = [];
   let current = "";
   let quote = null;
-  let escaping = false;
 
-  for (const character of raw) {
-    if (escaping) {
-      current += character;
-      escaping = false;
-      continue;
-    }
+  for (let index = 0; index < raw.length; index += 1) {
+    const character = raw[index];
 
     if (character === "\\") {
-      escaping = true;
+      // Only treat a backslash as an escape when it precedes a quote, a backslash,
+      // or (outside quotes) whitespace. Anything else keeps the backslash literal so
+      // Windows paths like C:\Users\me\notes.md survive tokenization.
+      const next = raw[index + 1];
+      if (next === "\"" || next === "'" || next === "\\" || (!quote && next !== undefined && /\s/.test(next))) {
+        current += next;
+        index += 1;
+      } else {
+        current += character;
+      }
       continue;
     }
 
@@ -114,10 +118,6 @@ export function splitRawArgumentString(raw) {
     }
 
     current += character;
-  }
-
-  if (escaping) {
-    current += "\\";
   }
 
   if (current) {

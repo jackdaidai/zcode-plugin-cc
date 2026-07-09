@@ -82,8 +82,9 @@ function resolveZCodeServerCommand() {
       // ignore and try the next candidate
     }
   }
-  // Fallback: rely on PATH resolution (works when the shim is directly exec-able).
-  return { command: "zcode", args: ["app-server"] };
+  // Fallback: rely on PATH resolution. On Windows the `zcode` shim is not directly
+  // exec-able from Node (ENOENT), so route the spawn through the shell there.
+  return { command: "zcode", args: ["app-server"], shell: process.platform === "win32" };
 }
 
 class AppServerClientBase {
@@ -213,11 +214,12 @@ class SpawnedZCodeAppServerClient extends AppServerClientBase {
   }
 
   async initialize() {
-    const { command, args } = this.options.serverCommand ?? resolveZCodeServerCommand();
+    const { command, args, shell } = this.options.serverCommand ?? resolveZCodeServerCommand();
     this.proc = spawn(command, args, {
       cwd: this.cwd,
       env: this.options.env ?? process.env,
       stdio: ["pipe", "pipe", "pipe"],
+      shell: shell ?? false,
       windowsHide: true
     });
 

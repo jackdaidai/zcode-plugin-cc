@@ -107,12 +107,35 @@ export function saveState(cwd, state) {
     if (retainedIds.has(job.id)) {
       continue;
     }
+    // Detached task-workers race on this file: a writer holding stale in-memory state
+    // must not delete the record/log of a job another worker just started.
+    if (job.status === "queued" || job.status === "running") {
+      continue;
+    }
     removeJobFile(resolveJobFile(cwd, job.id));
     removeFileIfExists(job.logFile);
   }
 
-  fs.writeFileSync(resolveStateFile(cwd), `${JSON.stringify(nextState, null, 2)}\n`, "utf8");
+  writeFileAtomic(resolveStateFile(cwd), `${JSON.stringify(nextState, null, 2)}\n`);
   return nextState;
+}
+
+function writeFileAtomic(filePath, contents) {
+  // Concurrent workers read this file; a plain overwrite exposes torn reads that make
+  // loadState fall back to an empty state. Write-then-rename keeps reads consistent.
+  const tempFile = `${filePath}.${process.pid}.tmp`;
+  fs.writeFileSync(tempFile, contents, "utf8");
+  try {
+    fs.renameSync(tempFile, filePath);
+  } catch {
+    // Windows can refuse to replace a file that another process has open; fall back
+    // to a direct write rather than losing the update.
+    try {
+      fs.writeFileSync(filePath, contents, "utf8");
+    } finally {
+      removeFileIfExists(tempFile);
+    }
+  }
 }
 
 export function updateState(cwd, mutate) {

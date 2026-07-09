@@ -99,11 +99,13 @@ export function terminateProcessTree(pid, options = {}) {
 
   try {
     killImpl(-pid, "SIGTERM");
+    escalateToSigkill(pid, -pid, killImpl, options.graceMs);
     return { attempted: true, delivered: true, method: "process-group" };
   } catch (error) {
     if (error?.code !== "ESRCH") {
       try {
         killImpl(pid, "SIGTERM");
+        escalateToSigkill(pid, pid, killImpl, options.graceMs);
         return { attempted: true, delivered: true, method: "process" };
       } catch (innerError) {
         if (innerError?.code === "ESRCH") {
@@ -114,6 +116,38 @@ export function terminateProcessTree(pid, options = {}) {
     }
 
     return { attempted: true, delivered: false, method: "process-group" };
+  }
+}
+
+function sleepSync(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+// The zcode app-server is known to ignore stdin EOF and may ignore SIGTERM too;
+// give it a short grace period, then SIGKILL whatever is still alive.
+function escalateToSigkill(pid, killTarget, killImpl, graceMs = 500) {
+  const isAlive = () => {
+    try {
+      killImpl(pid, 0);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  for (let waited = 0; waited < graceMs; waited += 50) {
+    if (!isAlive()) {
+      return;
+    }
+    sleepSync(50);
+  }
+
+  if (isAlive()) {
+    try {
+      killImpl(killTarget, "SIGKILL");
+    } catch {
+      // Process exited between the aliveness check and the kill.
+    }
   }
 }
 

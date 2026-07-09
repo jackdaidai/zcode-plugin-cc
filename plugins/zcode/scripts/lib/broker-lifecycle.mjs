@@ -6,6 +6,7 @@ import process from "node:process";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { createBrokerEndpoint, parseBrokerEndpoint } from "./broker-endpoint.mjs";
+import { terminateProcessTree } from "./process.mjs";
 import { resolveStateDir } from "./state.mjs";
 
 export const PID_FILE_ENV = "CODEX_COMPANION_APP_SERVER_PID_FILE";
@@ -40,10 +41,12 @@ export async function waitForBrokerEndpoint(endpoint, timeoutMs = 2000) {
   return false;
 }
 
-export async function sendBrokerShutdown(endpoint) {
+export async function sendBrokerShutdown(endpoint, timeoutMs = 3000) {
   await new Promise((resolve) => {
     const socket = connectToEndpoint(endpoint);
     socket.setEncoding("utf8");
+    // A wedged broker can accept the connection but never reply; do not wait forever.
+    socket.setTimeout(timeoutMs, () => socket.destroy());
     socket.on("connect", () => {
       socket.write(`${JSON.stringify({ id: 1, method: "broker/shutdown", params: {} })}\n`);
     });
@@ -171,9 +174,12 @@ export async function ensureBrokerSession(cwd, options = {}) {
 }
 
 export function teardownBrokerSession({ endpoint = null, pidFile, logFile, sessionDir = null, pid = null, killProcess = null }) {
-  if (Number.isFinite(pid) && killProcess) {
+  // Default to killing the stale broker's process tree: tearing down only the
+  // pidFile/socket would leave the broker and its app-server child running.
+  const killImpl = killProcess ?? ((stalePid) => terminateProcessTree(stalePid));
+  if (Number.isFinite(pid)) {
     try {
-      killProcess(pid);
+      killImpl(pid);
     } catch {
       // Ignore missing or already-exited broker processes.
     }

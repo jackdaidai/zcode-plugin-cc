@@ -15,6 +15,9 @@ import { parseBrokerEndpoint } from "./lib/broker-endpoint.mjs";
 // "active stream" until the turn's state.updated notifications are delivered).
 const STREAMING_METHODS = new Set(["session/send"]);
 
+// state.updated reasons that mark the end of a turn (mirrors lib/zcode.mjs).
+const TURN_COMPLETE_REASONS = new Set(["prompt_completed", "prompt_cancelled", "prompt_failed"]);
+
 function buildStreamThreadIds(method, params, result) {
   // ZCode tracks sessions, not threads. We collect the sessionId from the request/response
   // so the broker can keep the streaming socket ownership aligned with the active turn.
@@ -94,9 +97,13 @@ async function main() {
       return;
     }
     send(target, message);
-    if (message.method === "turn/completed" && activeStreamSocket === target) {
-      const threadId = message.params?.threadId ?? null;
-      if (!threadId || !activeStreamThreadIds || activeStreamThreadIds.has(threadId)) {
+    const isTurnEnd =
+      message.method === "state.updated" &&
+      (TURN_COMPLETE_REASONS.has(message.params?.reason) ||
+        (message.params?.patch?.status === "idle" && message.params?.reason && message.params.reason !== "prompt_started"));
+    if (isTurnEnd && activeStreamSocket === target) {
+      const sessionId = message.params?.sessionId ?? null;
+      if (!sessionId || !activeStreamThreadIds || activeStreamThreadIds.has(sessionId)) {
         activeStreamSocket = null;
         activeStreamThreadIds = null;
         if (activeRequestSocket === target) {
@@ -126,9 +133,17 @@ async function main() {
     sockets.add(socket);
     socket.setEncoding("utf8");
     let buffer = "";
+    // Serialize message handling per socket: the handler awaits app-server round-trips,
+    // and a concurrent invocation for a later chunk would re-enter the parse loop and
+    // race on the shared buffer/ownership state.
+    let processing = Promise.resolve();
 
-    socket.on("data", async (chunk) => {
+    socket.on("data", (chunk) => {
       buffer += chunk;
+      processing = processing.then(processBuffer, processBuffer);
+    });
+
+    async function processBuffer() {
       let newlineIndex = buffer.indexOf("\n");
       while (newlineIndex !== -1) {
         const line = buffer.slice(0, newlineIndex);
@@ -229,7 +244,7 @@ async function main() {
           }
         }
       }
-    });
+    }
 
     socket.on("close", () => {
       sockets.delete(socket);
