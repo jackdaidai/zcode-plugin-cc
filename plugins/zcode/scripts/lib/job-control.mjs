@@ -290,6 +290,26 @@ export function resolveResultJob(cwd, reference) {
   throw new Error("No finished ZCode jobs found for this repository yet.");
 }
 
+// A write task launched while an identical write task is still active means two ZCode
+// sessions edit the same working tree concurrently and clobber each other (whoever writes
+// last wins). Match on the job summary — which is derived from the prompt — scoped to the
+// whole workspace (not the session), because the conflict is between worktrees, not sessions.
+export function findActiveDuplicateWriteTask(workspaceRoot, summary) {
+  const normalized = String(summary ?? "").trim();
+  if (!normalized) {
+    return null;
+  }
+  return (
+    sortJobsNewestFirst(listJobs(workspaceRoot)).find(
+      (job) =>
+        job.jobClass === "task" &&
+        job.write === true &&
+        (job.status === "queued" || job.status === "running") &&
+        String(job.summary ?? "").trim() === normalized
+    ) ?? null
+  );
+}
+
 export function resolveCancelableJob(cwd, reference, options = {}) {
   const workspaceRoot = resolveWorkspaceRoot(cwd);
   const jobs = sortJobsNewestFirst(listJobs(workspaceRoot));

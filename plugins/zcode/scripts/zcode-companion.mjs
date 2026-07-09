@@ -35,6 +35,7 @@ import {
 import {
   buildSingleJobSnapshot,
   buildStatusSnapshot,
+  findActiveDuplicateWriteTask,
   readStoredJob,
   resolveCancelableJob,
   resolveResultJob,
@@ -79,7 +80,7 @@ function printUsage() {
       "  node scripts/zcode-companion.mjs setup [--enable-review-gate|--disable-review-gate] [--json]",
       "  node scripts/zcode-companion.mjs review [--wait|--background] [--base <ref>] [--scope <auto|working-tree|branch>]",
       "  node scripts/zcode-companion.mjs adversarial-review [--wait|--background] [--base <ref>] [--scope <auto|working-tree|branch>] [focus text]",
-      "  node scripts/zcode-companion.mjs task [--background] [--write] [--resume-last|--resume|--fresh] [--model <model|spark>] [--effort <none|minimal|low|medium|high|xhigh>] [prompt]",
+      "  node scripts/zcode-companion.mjs task [--background] [--write] [--force] [--resume-last|--resume|--fresh] [--model <model|spark>] [--effort <none|minimal|low|medium|high|xhigh>] [prompt]",
       "  node scripts/zcode-companion.mjs transfer [--source <claude-jsonl>] [--json]",
       "  node scripts/zcode-companion.mjs status [job-id] [--all] [--json]",
       "  node scripts/zcode-companion.mjs result [job-id] [--json]",
@@ -575,6 +576,14 @@ function renderQueuedTaskLaunch(payload) {
   return `${payload.title} started in the background as ${payload.jobId}. Check /zcode:status ${payload.jobId} for progress.\n`;
 }
 
+function renderDuplicateSkipped(existingJob) {
+  return (
+    `Skipped launch: a write-enabled ZCode task with the same summary is already ${existingJob.status} (${existingJob.id}).\n` +
+    "Two write runs in the same workspace would edit the same files concurrently and clobber each other. " +
+    `Cancel it with \`/zcode:cancel ${existingJob.id}\` and retry, or re-run with --force to launch anyway.\n`
+  );
+}
+
 function getJobKindLabel(kind, jobClass) {
   if (kind === "adversarial-review") {
     return "adversarial-review";
@@ -848,7 +857,7 @@ async function handleReview(argv) {
 async function handleTask(argv) {
   const { options, positionals } = parseCommandInput(argv, {
     valueOptions: ["model", "effort", "cwd", "prompt-file"],
-    booleanOptions: ["json", "write", "resume-last", "resume", "fresh", "background"],
+    booleanOptions: ["json", "write", "force", "resume-last", "resume", "fresh", "background"],
     aliasMap: {
       m: "model"
     }
@@ -870,6 +879,25 @@ async function handleTask(argv) {
     prompt,
     resumeLast
   });
+
+  // Refuse to launch a second concurrent writer against the same workspace unless forced.
+  // A fresh --write task whose summary matches an already-active write task means two ZCode
+  // sessions editing the same tree at once. Resumes are exempt (they continue one thread and
+  // have their own active-task guard) as are read-only runs (no file conflict).
+  if (write && !resumeLast && prompt && !options.force) {
+    const duplicate = findActiveDuplicateWriteTask(workspaceRoot, taskMetadata.summary);
+    if (duplicate) {
+      const payload = {
+        status: "duplicate-skipped",
+        existingJobId: duplicate.id,
+        existingStatus: duplicate.status,
+        title: taskMetadata.title,
+        summary: taskMetadata.summary
+      };
+      outputCommandResult(payload, renderDuplicateSkipped(duplicate), options.json);
+      return;
+    }
+  }
 
   if (options.background) {
     ensureZCodeAvailable(cwd);
