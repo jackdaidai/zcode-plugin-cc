@@ -1,6 +1,6 @@
 {
   "name": "zcode-plugin-cc",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "private": true,
   "type": "module",
   "description": "Use ZCode from Claude Code to review code or delegate tasks. Port of openai/codex-plugin-cc (engine swapped from Codex to ZCode).",
