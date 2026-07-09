@@ -86,7 +86,7 @@ function resolveZCodeServerCommand() {
   return { command: "zcode", args: ["app-server"], shell: process.platform === "win32" };
 }
 
-class AppServerClientBase {
+export class AppServerClientBase {
   constructor(cwd, options = {}) {
     this.cwd = cwd;
     this.options = options;
@@ -98,6 +98,13 @@ class AppServerClientBase {
     this.notificationHandler = null;
     this.lineBuffer = "";
     this.transport = "unknown";
+    // "workspace-write" | "read-only" | null — headless policy for answering the server's
+    // interaction/requestPermission (no human is attached to approve interactively).
+    this.permissionPolicy = options.permissionPolicy ?? null;
+    // When true, a "workspace-write" policy also auto-allows high-risk operations. This is
+    // only set when the parent Claude Code session is in bypassPermissions mode, so the
+    // user has already opted into fully unsupervised changes.
+    this.autoAllowHighRisk = Boolean(options.autoAllowHighRisk);
 
     this.exitPromise = new Promise((resolve) => {
       this.resolveExit = resolve;
@@ -180,6 +187,33 @@ class AppServerClientBase {
   }
 
   handleServerRequest(message) {
+    if (message.method === "interaction/requestPermission") {
+      const params = message.params ?? {};
+      const risk = params.riskLevel ?? "high";
+      const allowed =
+        this.permissionPolicy === "workspace-write" &&
+        (risk === "low" || risk === "medium" || (this.autoAllowHighRisk && risk === "high"));
+      let response;
+      if (allowed) {
+        const allowOption = (params.options ?? []).find(
+          (o) => o?.response?.decision === "allow"
+        );
+        response = allowOption?.response ?? { decision: "allow" };
+      } else {
+        const denyOption = (params.options ?? []).find(
+          (o) => o?.response?.decision === "deny"
+        );
+        response = denyOption?.response ?? {
+          decision: "deny",
+          reason:
+            this.permissionPolicy === "workspace-write"
+              ? `zcode-companion policy: risk "${risk}" requires interactive approval`
+              : "zcode-companion read-only run"
+        };
+      }
+      this.sendMessage({ id: message.id, result: response });
+      return;
+    }
     this.sendMessage({
       id: message.id,
       error: buildJsonRpcError(-32601, `Unsupported server request: ${message.method}`)

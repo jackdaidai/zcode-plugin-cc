@@ -7,6 +7,11 @@ export const SESSION_ID_ENV = "ZCODE_COMPANION_SESSION_ID";
 // Legacy name written by pre-rename hooks; still honored so sessions started
 // before an upgrade keep filtering correctly.
 export const LEGACY_SESSION_ID_ENV = "CODEX_COMPANION_SESSION_ID";
+// The parent Claude Code session's permission_mode (e.g. "default", "acceptEdits",
+// "plan", "bypassPermissions"). Forwarded from the SessionStart hook payload so the
+// companion can decide whether a workspace-write run may auto-approve high-risk actions
+// (only "bypassPermissions" qualifies).
+export const PERMISSION_MODE_ENV = "ZCODE_COMPANION_PERMISSION_MODE";
 
 export function nowIso() {
   return new Date().toISOString();

@@ -17,7 +17,7 @@ import {
 } from "./lib/broker-lifecycle.mjs";
 import { loadState, resolveStateFile, saveState } from "./lib/state.mjs";
 import { TRANSCRIPT_PATH_ENV } from "./lib/claude-session-transfer.mjs";
-import { LEGACY_SESSION_ID_ENV, SESSION_ID_ENV } from "./lib/tracked-jobs.mjs";
+import { LEGACY_SESSION_ID_ENV, PERMISSION_MODE_ENV, SESSION_ID_ENV } from "./lib/tracked-jobs.mjs";
 import { resolveWorkspaceRoot } from "./lib/workspace.mjs";
 const PLUGIN_DATA_ENV = "CLAUDE_PLUGIN_DATA";
 
@@ -79,6 +79,11 @@ function handleSessionStart(input) {
   appendEnvVar(SESSION_ID_ENV, input.session_id);
   appendEnvVar(TRANSCRIPT_PATH_ENV, input.transcript_path);
   appendEnvVar(PLUGIN_DATA_ENV, process.env[PLUGIN_DATA_ENV]);
+  // permission_mode lets the companion know whether the parent session is in
+  // bypassPermissions mode, so it may auto-approve high-risk writes during a
+  // workspace-write run. Forwarded defensively; if the host omits the field, the
+  // companion treats it as "default".
+  appendEnvVar(PERMISSION_MODE_ENV, input.permission_mode);
 }
 
 async function handleSessionEnd(input) {

@@ -169,6 +169,28 @@ the turn completes asynchronously via `state.updated` notifications until
 There is no native reviewer in ZCode, so `/zcode:review` collects the git diff and runs a
 review as a read-only turn (the same approach the Codex plugin's adversarial review takes).
 
+### Write permissions
+
+ZCode has no protocol-level sandbox or approval policy (unlike Codex). Instead, the running
+agent asks the client to approve each sensitive operation via `interaction/requestPermission`,
+tagged with a risk level (`low` / `medium` / `high`). Since plugin runs are headless (no human
+attached to approve prompts), the plugin answers with a fixed policy:
+
+| Run type | low / medium risk | high risk |
+|---|---|---|
+| Review runs (always read-only) | denied | denied |
+| Task runs (write-capable by default) | auto-approved | denied¹ |
+
+¹ High-risk operations (typically dangerous commands) are auto-approved only when the parent
+Claude Code session runs in `bypassPermissions` mode — i.e. you have already opted into fully
+unsupervised changes. `acceptEdits` deliberately does **not** qualify: it only authorizes file
+edits, while ZCode's high-risk tier covers dangerous commands, and there is no OS sandbox as a
+second line of defense. A denied high-risk operation surfaces in the task output; rerun under
+`bypassPermissions` if you want it executed.
+
+The permission mode is captured once at Claude Code session start; switching modes mid-session
+does not affect ZCode runs already-configured in that session.
+
 ### Limitations
 
 - `/zcode:review` can be slow (ZCode has no native reviewer, so it runs a read-only turn over

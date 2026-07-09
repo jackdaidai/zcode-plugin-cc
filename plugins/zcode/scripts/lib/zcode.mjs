@@ -314,16 +314,23 @@ export function buildTurnFailureMessage({ timedOut, completeReason, failureDetai
  * Run a single ZCode turn (the equivalent of Codex's runAppServerTurn).
  *
  * Options: { prompt, resumeThreadId, defaultPrompt, model, effort, sandbox, onProgress,
- *            persistThread, threadName }
- * ZCode ignores model/effort/sandbox at the protocol level (it uses its own config), but we
- * accept them for API compatibility. resumeThreadId maps to session/resume.
+ *            persistThread, threadName, autoAllowHighRisk }
+ * ZCode ignores model/effort at the protocol level (it uses its own config), but we
+ * accept them for API compatibility. `sandbox` drives our headless permission policy
+ * ("workspace-write" | "read-only") used to answer the server's
+ * interaction/requestPermission; `autoAllowHighRisk` additionally lets a workspace-write
+ * run approve high-risk operations (set only when the parent session is in bypassPermissions mode).
+ * resumeThreadId maps to session/resume.
  */
 export async function runAppServerTurn(cwd, options = {}) {
   let client = null;
   try {
     client = await ZCodeAppServerClient.connect(cwd, {
       env: options.env,
-      reuseExistingBroker: true
+      reuseExistingBroker: true,
+      permissionPolicy:
+        options.sandbox === "workspace-write" ? "workspace-write" : "read-only",
+      autoAllowHighRisk: Boolean(options.autoAllowHighRisk)
     });
 
     let sessionId = options.resumeThreadId || null;

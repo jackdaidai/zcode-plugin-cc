@@ -48,7 +48,8 @@ import {
   createProgressReporter,
   nowIso,
   runTrackedJob,
-  SESSION_ID_ENV
+  SESSION_ID_ENV,
+  PERMISSION_MODE_ENV
 } from "./lib/tracked-jobs.mjs";
 import { resolveWorkspaceRoot } from "./lib/workspace.mjs";
 import {
@@ -331,6 +332,19 @@ function getCurrentClaudeSessionId() {
   return process.env[SESSION_ID_ENV] ?? null;
 }
 
+// True when the parent Claude Code session is in bypassPermissions mode, meaning the user
+// has explicitly opted into fully unsupervised changes. Used to let a workspace-write run
+// also auto-approve high-risk operations (otherwise high-risk is held for interactive
+// approval, which never arrives in a headless run). acceptEdits deliberately does NOT
+// qualify: it only authorizes file edits in the parent session, while zcode's high-risk
+// tier covers dangerous commands — and zcode has no OS sandbox as a second line of defense.
+// Field name/value follow Claude Code's documented permission_mode; any unknown value
+// falls back to false (treated as "default").
+function isParentSessionAutoPermission() {
+  const mode = process.env[PERMISSION_MODE_ENV] ?? "default";
+  return mode === "bypassPermissions";
+}
+
 function filterJobsForCurrentClaudeSession(jobs) {
   const sessionId = getCurrentClaudeSessionId();
   if (!sessionId) {
@@ -490,6 +504,9 @@ async function executeTaskRun(request) {
     model: request.model,
     effort: request.effort,
     sandbox: request.write ? "workspace-write" : "read-only",
+    // Only meaningful under workspace-write: lets high-risk operations auto-approve when the
+    // parent Claude Code session is in bypassPermissions mode. Has no effect on read-only runs.
+    autoAllowHighRisk: request.write && isParentSessionAutoPermission(),
     onProgress: request.onProgress,
     persistThread: true,
     threadName: resumeThreadId ? null : buildPersistentTaskThreadName(request.prompt || DEFAULT_CONTINUE_PROMPT)

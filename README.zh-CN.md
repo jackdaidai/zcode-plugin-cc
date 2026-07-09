@@ -167,6 +167,24 @@ Codex 有三处关键差异：
 ZCode 没有原生 reviewer，所以 `/zcode:review` 会采集 git diff 并作为一个只读 turn 运行审查
 （与 Codex 插件对抗式审查的做法相同）。
 
+### 写权限
+
+ZCode 与 Codex 不同，协议层没有沙箱和审批策略字段。运行中的 agent 会通过
+`interaction/requestPermission` 向客户端逐项请求敏感操作的批准，并附带风险等级
+（`low` / `medium` / `high`）。插件运行是无头的（没有人在旁边点确认），所以按固定策略应答：
+
+| 运行类型 | low / medium 风险 | high 风险 |
+|---|---|---|
+| 审查运行（始终只读） | 拒绝 | 拒绝 |
+| 任务运行（默认可写） | 自动批准 | 拒绝¹ |
+
+¹ high 风险操作（通常是危险命令）只有在主 Claude Code 会话处于 `bypassPermissions` 模式时才会
+自动批准——即你已经明确选择了完全无监督的变更。`acceptEdits` 刻意**不**算数：它只授权了文件
+编辑，而 ZCode 的 high 风险档覆盖的是危险命令，且没有 OS 沙箱作为第二道防线。被拒绝的 high
+风险操作会体现在任务输出里；想执行的话请在 `bypassPermissions` 模式下重跑。
+
+权限模式在 Claude Code 会话启动时捕获一次；会话中途切换模式不影响该会话已配置的 ZCode 运行。
+
 ### 已知限制
 
 - `/zcode:review` 可能较慢（ZCode 没有原生 reviewer，会对采集到的 git diff 跑只读 turn）。对
