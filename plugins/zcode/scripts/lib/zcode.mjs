@@ -151,6 +151,44 @@ async function createWorkspaceSession(client, cwd) {
   return result;
 }
 
+// Map the companion's --effort vocabulary (none|minimal|low|medium|high|xhigh) onto
+// ZCode protocol thought levels. Levels are model-specific; for GLM-5.2 the catalog is
+// ["max", "high", "nothink"] (anthropic thinking budgets 32000 / 16000 / disabled) with
+// "max" as the default. Unsupported values are skipped server-side with a warning, so a
+// wrong guess degrades to the model default instead of failing the turn.
+const EFFORT_TO_THOUGHT_LEVEL = new Map([
+  ["none", "nothink"],
+  ["minimal", "nothink"],
+  ["low", "nothink"],
+  ["medium", "high"],
+  ["high", "high"],
+  ["xhigh", "max"]
+]);
+
+function effortToThoughtLevel(effort) {
+  if (!effort) {
+    return null;
+  }
+  return EFFORT_TO_THOUGHT_LEVEL.get(String(effort).trim().toLowerCase()) ?? null;
+}
+
+async function applyThoughtLevel(client, sessionId, effort) {
+  const thoughtLevel = effortToThoughtLevel(effort);
+  if (!thoughtLevel) {
+    return;
+  }
+  // Best-effort: an unsupported level (other model/catalog) must not fail the turn.
+  // persistAsWorkspaceLastUsed=false keeps the choice scoped to this run instead of
+  // becoming the workspace default picked up by the desktop app.
+  await client
+    .request("session/setThoughtLevel", {
+      sessionId,
+      thoughtLevel,
+      persistAsWorkspaceLastUsed: false
+    })
+    .catch(() => {});
+}
+
 /**
  * Send a prompt to a session and wait for the turn to complete by watching
  * state.updated notifications. Returns the final session/read snapshot.
@@ -315,8 +353,9 @@ export function buildTurnFailureMessage({ timedOut, completeReason, failureDetai
  *
  * Options: { prompt, resumeThreadId, defaultPrompt, model, effort, sandbox, onProgress,
  *            persistThread, threadName, autoAllowHighRisk }
- * ZCode ignores model/effort at the protocol level (it uses its own config), but we
- * accept them for API compatibility. `sandbox` drives our headless permission policy
+ * ZCode ignores `model` at the protocol level (it uses its own config), but we accept
+ * it for API compatibility. `effort` is mapped onto the session's thought level via
+ * session/setThoughtLevel (see effortToThoughtLevel). `sandbox` drives our headless permission policy
  * ("workspace-write" | "read-only") used to answer the server's
  * interaction/requestPermission; `autoAllowHighRisk` additionally lets a workspace-write
  * run approve high-risk operations (set only when the parent session is in bypassPermissions mode).
@@ -344,6 +383,8 @@ export async function runAppServerTurn(cwd, options = {}) {
     if (!sessionId) {
       throw new Error("ZCode did not return a session id.");
     }
+
+    await applyThoughtLevel(client, sessionId, options.effort);
 
     const prompt = options.prompt || options.defaultPrompt || "";
     if (!prompt) {

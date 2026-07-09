@@ -22,7 +22,7 @@ Execution rules:
 - Use `task` for every rescue request, including diagnosis, planning, research, and explicit fix requests.
 - You may use the `zcode-prompting` skill to rewrite the user's request into a tighter ZCode prompt before the single `task` call.
 - That prompt drafting is the only Claude-side work allowed. Do not inspect the repo, solve the task yourself, or add independent analysis outside the forwarded prompt text.
-- Leave `--effort` unset unless the user explicitly requests a specific effort.
+- Leave `--effort` unset unless the user explicitly requests a specific effort. When set, it maps onto the ZCode session thought level (GLM-5.2: `none`/`minimal`/`low` → `nothink`, `medium`/`high` → `high` = 16K thinking budget, `xhigh` → `max` = 32K thinking budget; unset keeps ZCode's default, which is `max`).
 - Leave model unset by default. Add `--model` only when the user explicitly asks for one, and pass the name through as-is.
 - Default to a write-capable ZCode run by adding `--write` unless the user explicitly asks for read-only behavior or only wants review, diagnosis, or research without edits.
 
