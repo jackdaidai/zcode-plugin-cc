@@ -3,13 +3,13 @@
   "owner": { "name": "ZCode Plugin (port of openai/codex-plugin-cc)" },
   "metadata": {
     "description": "Use ZCode from Claude Code for code review and task delegation.",
-    "version": "0.1.3"
+    "version": "0.1.4"
   },
   "plugins": [
     {
       "name": "zcode",
       "description": "Use ZCode from Claude Code to review code or delegate tasks.",
-      "version": "0.1.3",
+      "version": "0.1.4",
       "author": { "name": "ZCode Plugin (port of openai/codex-plugin-cc)" },
       "source": "./plugins/zcode"
     }
