@@ -39,7 +39,7 @@ If you have this repo checked out locally:
 ### From GitHub
 
 ```
-/plugin marketplace add <your-github-user>/zcode-plugin-cc
+/plugin marketplace add jackdaidai/zcode-plugin-cc
 ```
 
 ### Then
@@ -175,6 +175,16 @@ review as a read-only turn (the same approach the Codex plugin's adversarial rev
   than replaying it turn-by-turn (ZCode's app-server exposes no session-import RPC).
 - ZCode session resume may surface "historical model no longer available" if the session's model
   was retired; start a fresh session in that case.
+
+## Contributing
+
+Contributions are welcome! This is a community-maintained port.
+
+- 🐛 Found a bug or have a feature idea? Please [open an issue](https://github.com/jackdaidai/zcode-plugin-cc/issues) first so we can align before any code is written.
+- 🔧 Want to submit code? Fork the repo, branch off `main`, and open a PR. See [`CONTRIBUTING.md`](./CONTRIBUTING.md) for the dev setup and PR process.
+- 🔒 Found a security issue? Please [report it privately](https://github.com/jackdaidai/zcode-plugin-cc/security/advisories/new) — do not open a public issue. See [`SECURITY.md`](./SECURITY.md).
+
+All contributions are licensed under Apache-2.0, consistent with the upstream project.
 
 ## Acknowledgements
 

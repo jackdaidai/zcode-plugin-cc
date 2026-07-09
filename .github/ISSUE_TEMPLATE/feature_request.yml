@@ -1,0 +1,58 @@
+name: 💡 Feature request
+description: Suggest a new capability or improvement
+title: "[feature] "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea! Please describe the use case first —
+        we prefer to align on direction before code is written.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: The concrete pain point or limitation you're hitting.
+      placeholder: "I'm trying to ..., but currently I can't because ..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: What would you like to happen?
+      description: Your proposed solution, or any ideas you've considered.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you've considered
+      description: Workarounds you've tried or other approaches.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Which part of the plugin does this relate to?
+      options:
+        - Slash command (e.g. /zcode:review)
+        - Hooks / review gate
+        - Broker / app-server bridge
+        - Skills / agents
+        - Documentation
+        - Other
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: willingness
+    attributes:
+      label: Are you willing to help?
+      options:
+        - label: I'm willing to open a PR for this (after discussion)
+          required: false

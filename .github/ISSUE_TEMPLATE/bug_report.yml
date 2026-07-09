@@ -1,0 +1,71 @@
+name: 🐛 Bug report
+description: Report something that isn't working as expected
+title: "[bug] "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug!
+        Please check existing issues first to avoid duplicates.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the unexpected behavior.
+      placeholder: "When I ran /zcode:review on branch X, ..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+      description: What you thought would happen instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps. A concrete command + sample repo helps a lot.
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+
+  - type: input
+    id: command
+    attributes:
+      label: Which command / area?
+      description: e.g. /zcode:review, /zcode:transfer, hooks, broker, skills
+      placeholder: "/zcode:review"
+    validations:
+      required: false
+
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment
+      description: Output of `node --version`, Claude Code version, ZCode version, OS.
+      render: shell
+      placeholder: |
+        node: v20.x
+        Claude Code: vX.Y.Z
+        ZCode: vX.Y.Z
+        OS: macOS 14 / Windows 11 / Ubuntu 22.04
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / error output
+      description: Paste relevant logs or error messages. Redact secrets.
+      render: shell
+    validations:
+      required: false

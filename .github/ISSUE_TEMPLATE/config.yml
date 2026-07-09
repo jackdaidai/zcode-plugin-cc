@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 🔒 Report a security vulnerability
+    url: https://github.com/jackdaidai/zcode-plugin-cc/security/advisories/new
+    about: Please report security issues privately, not as a public issue. See SECURITY.md.
+  - name: 💬 Question / discussion
+    url: https://github.com/jackdaidai/zcode-plugin-cc/discussions
+    about: For questions and general discussion. (Enable Discussions first, or remove this link.)

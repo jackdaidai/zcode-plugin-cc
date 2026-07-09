@@ -38,7 +38,7 @@ token）保持不变；只有与编码引擎对话的引擎层被重写，改说
 ### 从 GitHub 安装
 
 ```
-/plugin marketplace add <你的-github-用户名>/zcode-plugin-cc
+/plugin marketplace add jackdaidai/zcode-plugin-cc
 ```
 
 ### 然后执行
