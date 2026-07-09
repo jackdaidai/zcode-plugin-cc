@@ -32,6 +32,49 @@ test("terminateProcessTree uses taskkill on Windows", () => {
   assert.equal(outcome.method, "taskkill");
 });
 
+test("terminateProcessTree escalates to SIGKILL on POSIX when SIGTERM is ignored", () => {
+  const calls = [];
+  const outcome = terminateProcessTree(1234, {
+    platform: "linux",
+    graceMs: 60,
+    killImpl(target, signal) {
+      calls.push([target, signal]);
+      // Signal 0 is the aliveness probe; pretend the process never exits so the
+      // escalation path has to fire.
+      return true;
+    }
+  });
+
+  assert.equal(outcome.delivered, true);
+  assert.equal(outcome.method, "process-group");
+  assert.deepEqual(calls[0], [-1234, "SIGTERM"]);
+  assert.deepEqual(calls[calls.length - 1], [-1234, "SIGKILL"]);
+});
+
+test("terminateProcessTree skips SIGKILL when the process exits during the grace period", () => {
+  const calls = [];
+  const outcome = terminateProcessTree(1234, {
+    platform: "linux",
+    graceMs: 60,
+    killImpl(target, signal) {
+      calls.push([target, signal]);
+      if (signal === 0) {
+        const error = new Error("no such process");
+        error.code = "ESRCH";
+        throw error;
+      }
+      return true;
+    }
+  });
+
+  assert.equal(outcome.delivered, true);
+  assert.equal(outcome.method, "process-group");
+  assert.deepEqual(calls, [
+    [-1234, "SIGTERM"],
+    [1234, 0]
+  ]);
+});
+
 test("terminateProcessTree treats missing Windows processes as already stopped", () => {
   const outcome = terminateProcessTree(1234, {
     platform: "win32",

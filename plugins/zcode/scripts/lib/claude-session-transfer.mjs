@@ -38,7 +38,7 @@ export function resolveClaudeSessionPath(cwd, options = {}) {
   }
   const relative = path.relative(projects, source);
   if (relative === "" || relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
-    throw new Error(`Codex can import Claude sessions only from ${CLAUDE_PROJECTS_DIR}: ${source}`);
+    throw new Error(`ZCode can import Claude sessions only from ${CLAUDE_PROJECTS_DIR}: ${source}`);
   }
   return source;
 }
