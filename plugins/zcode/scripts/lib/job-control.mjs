@@ -1,6 +1,6 @@
 import fs from "node:fs";
 
-import { getSessionRuntimeStatus } from "./codex.mjs";
+import { getSessionRuntimeStatus } from "./zcode.mjs";
 import { getConfig, listJobs, readJobFile, resolveJobFile } from "./state.mjs";
 import { SESSION_ID_ENV } from "./tracked-jobs.mjs";
 import { resolveWorkspaceRoot } from "./workspace.mjs";
@@ -207,7 +207,7 @@ function matchJobReference(jobs, reference, predicate = () => true) {
     throw new Error(`Job reference "${reference}" is ambiguous. Use a longer job id.`);
   }
 
-  throw new Error(`No job found for "${reference}". Run /codex:status to list known jobs.`);
+  throw new Error(`No job found for "${reference}". Run /zcode:status to list known jobs.`);
 }
 
 export function buildStatusSnapshot(cwd, options = {}) {
@@ -244,7 +244,7 @@ export function buildSingleJobSnapshot(cwd, reference, options = {}) {
   const jobs = sortJobsNewestFirst(listJobs(workspaceRoot));
   const selected = matchJobReference(jobs, reference);
   if (!selected) {
-    throw new Error(`No job found for "${reference}". Run /codex:status to inspect known jobs.`);
+    throw new Error(`No job found for "${reference}". Run /zcode:status to inspect known jobs.`);
   }
 
   return {
@@ -268,14 +268,14 @@ export function resolveResultJob(cwd, reference) {
 
   const active = matchJobReference(jobs, reference, (job) => job.status === "queued" || job.status === "running");
   if (active) {
-    throw new Error(`Job ${active.id} is still ${active.status}. Check /codex:status and try again once it finishes.`);
+    throw new Error(`Job ${active.id} is still ${active.status}. Check /zcode:status and try again once it finishes.`);
   }
 
   if (reference) {
-    throw new Error(`No finished job found for "${reference}". Run /codex:status to inspect active jobs.`);
+    throw new Error(`No finished job found for "${reference}". Run /zcode:status to inspect active jobs.`);
   }
 
-  throw new Error("No finished Codex jobs found for this repository yet.");
+  throw new Error("No finished ZCode jobs found for this repository yet.");
 }
 
 export function resolveCancelableJob(cwd, reference, options = {}) {
@@ -297,12 +297,12 @@ export function resolveCancelableJob(cwd, reference, options = {}) {
     return { workspaceRoot, job: sessionScopedActiveJobs[0] };
   }
   if (sessionScopedActiveJobs.length > 1) {
-    throw new Error("Multiple Codex jobs are active. Pass a job id to /codex:cancel.");
+    throw new Error("Multiple ZCode jobs are active. Pass a job id to /zcode:cancel.");
   }
 
   if (getCurrentSessionId(options)) {
-    throw new Error("No active Codex jobs to cancel for this session.");
+    throw new Error("No active ZCode jobs to cancel for this session.");
   }
 
-  throw new Error("No active Codex jobs to cancel.");
+  throw new Error("No active ZCode jobs to cancel.");
 }

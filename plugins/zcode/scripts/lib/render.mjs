@@ -99,7 +99,7 @@ function escapeMarkdownCell(value) {
     .trim();
 }
 
-function formatCodexResumeCommand(job) {
+function formatZCodeResumeCommand(job) {
   if (!job?.threadId) {
     return null;
   }
@@ -111,9 +111,9 @@ function appendActiveJobsTable(lines, jobs) {
   lines.push("| Job | Kind | Status | Phase | Elapsed | ZCode Session ID | Summary | Actions |");
   lines.push("| --- | --- | --- | --- | --- | --- | --- | --- |");
   for (const job of jobs) {
-    const actions = [`/codex:status ${job.id}`];
+    const actions = [`/zcode:status ${job.id}`];
     if (job.status === "queued" || job.status === "running") {
-      actions.push(`/codex:cancel ${job.id}`);
+      actions.push(`/zcode:cancel ${job.id}`);
     }
     lines.push(
       `| ${escapeMarkdownCell(job.id)} | ${escapeMarkdownCell(job.kindLabel)} | ${escapeMarkdownCell(job.status)} | ${escapeMarkdownCell(job.phase ?? "")} | ${escapeMarkdownCell(job.elapsed ?? "")} | ${escapeMarkdownCell(job.threadId ?? "")} | ${escapeMarkdownCell(job.summary ?? "")} | ${actions.map((action) => `\`${action}\``).join("<br>")} |`
@@ -138,7 +138,7 @@ function pushJobDetails(lines, job, options = {}) {
   if (job.threadId) {
     lines.push(`  ZCode session ID: ${job.threadId}`);
   }
-  const resumeCommand = formatCodexResumeCommand(job);
+  const resumeCommand = formatZCodeResumeCommand(job);
   if (resumeCommand) {
     lines.push(`  Resume in ZCode: ${resumeCommand}`);
   }
@@ -146,14 +146,14 @@ function pushJobDetails(lines, job, options = {}) {
     lines.push(`  Log: ${job.logFile}`);
   }
   if ((job.status === "queued" || job.status === "running") && options.showCancelHint) {
-    lines.push(`  Cancel: /codex:cancel ${job.id}`);
+    lines.push(`  Cancel: /zcode:cancel ${job.id}`);
   }
   if (job.status !== "queued" && job.status !== "running" && options.showResultHint) {
-    lines.push(`  Result: /codex:result ${job.id}`);
+    lines.push(`  Result: /zcode:result ${job.id}`);
   }
   if (job.status !== "queued" && job.status !== "running" && job.jobClass === "task" && job.write && options.showReviewHint) {
-    lines.push("  Review changes: /codex:review --wait");
-    lines.push("  Stricter review: /codex:adversarial-review --wait");
+    lines.push("  Review changes: /zcode:review --wait");
+    lines.push("  Stricter review: /zcode:adversarial-review --wait");
   }
   if (job.progressPreview?.length) {
     lines.push("  Progress:");
@@ -183,7 +183,7 @@ export function renderSetupReport(report) {
     "Checks:",
     `- node: ${report.node.detail}`,
     `- npm: ${report.npm.detail}`,
-    `- codex: ${report.codex.detail}`,
+    `- zcode: ${report.zcode.detail}`,
     `- auth: ${report.auth.detail}`,
     `- session runtime: ${report.sessionRuntime.label}`,
     `- review gate: ${report.reviewGateEnabled ? "enabled" : "disabled"}`,
@@ -459,7 +459,7 @@ export function renderCancelReport(job) {
   if (job.summary) {
     lines.push(`- Summary: ${job.summary}`);
   }
-  lines.push("- Check `/codex:status` for the updated queue.");
+  lines.push("- Check `/zcode:status` for the updated queue.");
 
   return `${lines.join("\n").trimEnd()}\n`;
 }

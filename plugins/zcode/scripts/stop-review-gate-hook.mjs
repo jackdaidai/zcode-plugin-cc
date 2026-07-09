@@ -148,7 +148,7 @@ function main() {
   const jobs = sortJobsNewestFirst(filterJobsForCurrentSession(listJobs(workspaceRoot), input));
   const runningJob = jobs.find((job) => job.status === "queued" || job.status === "running");
   const runningTaskNote = runningJob
-    ? `ZCode task${runningJob.id} ${runningJob.id} is still running. Check /zcode:status and use /zcode:cancel ${runningJob.id} if you want to stop it before ending the session.`
+    ? `ZCode task ${runningJob.id} is still running. Check /zcode:status and use /zcode:cancel ${runningJob.id} if you want to stop it before ending the session.`
     : null;
 
   if (!config.stopReviewGate) {

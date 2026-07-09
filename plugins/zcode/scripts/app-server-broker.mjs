@@ -185,7 +185,7 @@ async function main() {
         ) {
           send(socket, {
             id: message.id,
-            error: buildJsonRpcError(BROKER_BUSY_RPC_CODE, "Shared Codex broker is busy.")
+            error: buildJsonRpcError(BROKER_BUSY_RPC_CODE, "Shared ZCode broker is busy.")
           });
           continue;
         }
