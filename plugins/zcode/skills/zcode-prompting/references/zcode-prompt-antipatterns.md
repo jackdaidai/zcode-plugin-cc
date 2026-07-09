@@ -1,6 +1,6 @@
 # ZCode Prompt Anti-Patterns
 
-Avoid these when prompting ZCode or GPT-5.4.
+Avoid these when prompting ZCode.
 
 ## Vague task framing
 

@@ -128,7 +128,7 @@ Prefer primary sources.
 
 ```xml
 <task>
-Diagnose why this existing prompt is underperforming and propose the smallest high-leverage changes to improve it for ZCode or GPT-5.4.
+Diagnose why this existing prompt is underperforming and propose the smallest high-leverage changes to improve it for ZCode.
 </task>
 
 <structured_output_contract>

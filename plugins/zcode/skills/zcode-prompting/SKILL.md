@@ -1,10 +1,10 @@
 ---
-name: gpt-5-4-prompting
-description: Internal guidance for composing ZCode and GPT-5.4 prompts for coding, review, diagnosis, and research tasks inside the ZCode Claude Code plugin
+name: zcode-prompting
+description: Internal guidance for composing ZCode prompts for coding, review, diagnosis, and research tasks inside the ZCode Claude Code plugin
 user-invocable: false
 ---
 
-# GPT-5.4 Prompting
+# ZCode Prompting
 
 Use this skill when `zcode:zcode-rescue` needs to ask ZCode or another model-based workflow for help.
 

@@ -1,6 +1,6 @@
 # Prompt Blocks
 
-Use these blocks selectively when composing ZCode or GPT-5.4 prompts.
+Use these blocks selectively when composing ZCode prompts.
 Wrap each block in the XML tag shown in its heading.
 
 ## Core Wrapper

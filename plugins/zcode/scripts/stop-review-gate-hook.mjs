@@ -6,11 +6,11 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
-import { getCodexAvailability } from "./lib/zcode.mjs";
+import { getZCodeAvailability } from "./lib/zcode.mjs";
 import { loadPromptTemplate, interpolateTemplate } from "./lib/prompts.mjs";
 import { getConfig, listJobs } from "./lib/state.mjs";
 import { sortJobsNewestFirst } from "./lib/job-control.mjs";
-import { SESSION_ID_ENV } from "./lib/tracked-jobs.mjs";
+import { LEGACY_SESSION_ID_ENV, SESSION_ID_ENV } from "./lib/tracked-jobs.mjs";
 import { resolveWorkspaceRoot } from "./lib/workspace.mjs";
 
 const STOP_REVIEW_TIMEOUT_MS = 15 * 60 * 1000;
@@ -38,7 +38,7 @@ function logNote(message) {
 }
 
 function filterJobsForCurrentSession(jobs, input = {}) {
-  const sessionId = input.session_id || process.env[SESSION_ID_ENV] || null;
+  const sessionId = input.session_id || process.env[SESSION_ID_ENV] || process.env[LEGACY_SESSION_ID_ENV] || null;
   if (!sessionId) {
     return jobs;
   }
@@ -57,7 +57,7 @@ function buildStopReviewPrompt(input = {}) {
 }
 
 function buildSetupNote(cwd) {
-  const availability = getCodexAvailability(cwd);
+  const availability = getZCodeAvailability(cwd);
   if (availability.available) {
     return null;
   }

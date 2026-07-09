@@ -11,8 +11,8 @@ import {
     buildPersistentTaskThreadName,
     DEFAULT_CONTINUE_PROMPT,
     findLatestTaskThread,
-    getCodexAuthStatus,
-    getCodexAvailability,
+    getZCodeAuthStatus,
+    getZCodeAvailability,
     getSessionRuntimeStatus,
     interruptAppServerTurn,
     parseStructuredOutput,
@@ -189,8 +189,8 @@ async function buildSetupReport(cwd, actionsTaken = []) {
   const nodeStatus = binaryAvailable("node", ["--version"], { cwd });
   // ZCode ships its own runtime, so npm is informational only.
   const npmStatus = binaryAvailable("npm", ["--version"], { cwd });
-  const zcodeStatus = getCodexAvailability(cwd);
-  const authStatus = await getCodexAuthStatus(cwd);
+  const zcodeStatus = getZCodeAvailability(cwd);
+  const authStatus = await getZCodeAuthStatus(cwd);
   const config = getConfig(workspaceRoot);
 
   const nextSteps = [];
@@ -209,8 +209,6 @@ async function buildSetupReport(cwd, actionsTaken = []) {
     node: nodeStatus,
     npm: npmStatus,
     zcode: zcodeStatus,
-    // Back-compat alias for callers that read the `codex` key.
-    codex: zcodeStatus,
     auth: authStatus,
     sessionRuntime: getSessionRuntimeStatus(process.env, workspaceRoot),
     reviewGateEnabled: Boolean(config.stopReviewGate),
@@ -290,7 +288,7 @@ function buildStandardReviewPrompt(context) {
 }
 
 function ensureZCodeAvailable(cwd) {
-  const availability = getCodexAvailability(cwd);
+  const availability = getZCodeAvailability(cwd);
   if (!availability.available) {
     throw new Error("ZCode CLI is not available. Make sure ZCode is installed and its launcher is on PATH, then rerun `/zcode:setup`.");
   }
@@ -686,8 +684,8 @@ async function executeTransfer(cwd, options = {}) {
   }
 
   // ZCode has no external-agent import RPC, so seed a new session with the conversation.
-  const { CodexAppServerClient } = await import("./lib/app-server.mjs");
-  const client = await CodexAppServerClient.connect(cwd, { reuseExistingBroker: true });
+  const { ZCodeAppServerClient } = await import("./lib/app-server.mjs");
+  const client = await ZCodeAppServerClient.connect(cwd, { reuseExistingBroker: true });
   try {
     const created = await client.request("session/create", { workspace: { workspacePath: path.resolve(cwd), workspaceKey: path.resolve(cwd) } });
     const sessionId = created.session?.sessionId;

@@ -9,7 +9,7 @@ function sanitizePipeName(value) {
 
 export function createBrokerEndpoint(sessionDir, platform = process.platform) {
   if (platform === "win32") {
-    const pipeName = sanitizePipeName(`${path.win32.basename(sessionDir)}-codex-app-server`);
+    const pipeName = sanitizePipeName(`${path.win32.basename(sessionDir)}-zcode-app-server`);
     return `pipe:\\\\.\\pipe\\${pipeName}`;
   }
 

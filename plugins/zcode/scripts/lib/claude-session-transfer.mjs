@@ -4,7 +4,9 @@ import path from "node:path";
 
 import { ensureAbsolutePath } from "./fs.mjs";
 
-export const TRANSCRIPT_PATH_ENV = "CODEX_COMPANION_TRANSCRIPT_PATH";
+export const TRANSCRIPT_PATH_ENV = "ZCODE_COMPANION_TRANSCRIPT_PATH";
+// Legacy name written by pre-rename hooks; still honored for in-flight sessions.
+const LEGACY_TRANSCRIPT_PATH_ENV = "CODEX_COMPANION_TRANSCRIPT_PATH";
 const CLAUDE_PROJECTS_DIR = path.join(os.homedir(), ".claude", "projects");
 
 function resolveUserPath(cwd, value) {
@@ -18,7 +20,7 @@ function resolveUserPath(cwd, value) {
 }
 
 export function resolveClaudeSessionPath(cwd, options = {}) {
-  const requestedPath = options.source || process.env[TRANSCRIPT_PATH_ENV];
+  const requestedPath = options.source || process.env[TRANSCRIPT_PATH_ENV] || process.env[LEGACY_TRANSCRIPT_PATH_ENV];
   if (!requestedPath) {
     throw new Error("Could not identify the current Claude transcript. Retry with --source <path-to-claude-jsonl>.");
   }

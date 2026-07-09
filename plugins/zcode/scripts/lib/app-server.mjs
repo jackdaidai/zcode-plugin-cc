@@ -19,8 +19,7 @@
 //      session/read, session/resume, session/stop, session/compact, session/list). There is
 //      no `thread/*`, `turn/*`, or `review/*` namespace.
 //
-// The exported class keeps the name `CodexAppServerClient` as a back-compat alias (the
-// companion and broker import that symbol) and also exports `ZCodeAppServerClient`.
+// The exported entry point is `ZCodeAppServerClient`.
 
 import fs from "node:fs";
 import net from "node:net";
@@ -387,6 +386,3 @@ export class ZCodeAppServerClient {
     return client;
   }
 }
-
-// Back-compat alias: the companion and broker import `CodexAppServerClient`.
-export const CodexAppServerClient = ZCodeAppServerClient;

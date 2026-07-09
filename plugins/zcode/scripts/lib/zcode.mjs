@@ -1,6 +1,6 @@
 // ZCode engine wrapper — the ZCode equivalent of the Codex plugin's `lib/codex.mjs`.
 //
-// Exposes the SAME exported API the companion imports (so `codex-companion.mjs` works
+// Exposes the SAME exported API the companion imports (so `zcode-companion.mjs` works
 // unchanged apart from its import path), but talks the ZCode Protocol instead of the Codex
 // app-server protocol. All method names/flows were confirmed by reverse-engineering
 // `zcode app-server` (zcode 0.15.0):
@@ -20,7 +20,7 @@ import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 
-import { BROKER_ENDPOINT_ENV, CodexAppServerClient } from "./app-server.mjs";
+import { BROKER_ENDPOINT_ENV, ZCodeAppServerClient } from "./app-server.mjs";
 import { loadBrokerSession } from "./broker-lifecycle.mjs";
 import { binaryAvailable } from "./process.mjs";
 
@@ -37,7 +37,7 @@ const DEFAULT_TURN_TIMEOUT_MS = 15 * 60 * 1000;
 /**
  * Check that the `zcode` CLI is installed and exposes the app-server subcommand.
  */
-export function getCodexAvailability(cwd) {
+export function getZCodeAvailability(cwd) {
   // `zcode` on Windows is a shim that Node's spawn can't resolve without shell:true.
   // binaryAvailable uses spawnSync without shell, so probe `zcode --version` via shell on win32.
   const versionStatus = binaryAvailable("zcode", ["--version"], { cwd, shell: process.platform === "win32" });
@@ -82,8 +82,8 @@ export function getSessionRuntimeStatus(env = process.env, cwd = process.cwd()) 
  * Auth status. ZCode authenticates via `zcode login` (Z.AI OAuth) and persists shared
  * credentials; we infer logged-in state by whether a session can be created.
  */
-export async function getCodexAuthStatus(cwd, options = {}) {
-  const availability = getCodexAvailability(cwd);
+export async function getZCodeAuthStatus(cwd, options = {}) {
+  const availability = getZCodeAvailability(cwd);
   if (!availability.available) {
     return {
       available: false,
@@ -99,7 +99,7 @@ export async function getCodexAuthStatus(cwd, options = {}) {
 
   let client = null;
   try {
-    client = await CodexAppServerClient.connect(cwd, {
+    client = await ZCodeAppServerClient.connect(cwd, {
       env: options.env,
       reuseExistingBroker: true
     });
@@ -268,7 +268,7 @@ function buildResultStatus({ completed, completeReason }) {
 export async function runAppServerTurn(cwd, options = {}) {
   let client = null;
   try {
-    client = await CodexAppServerClient.connect(cwd, {
+    client = await ZCodeAppServerClient.connect(cwd, {
       env: options.env,
       reuseExistingBroker: true
     });
@@ -348,7 +348,7 @@ export async function runAppServerReview(cwd, options = {}) {
 export async function interruptAppServerTurn(cwd, { threadId, turnId }) {
   let client = null;
   try {
-    client = await CodexAppServerClient.connect(cwd, {
+    client = await ZCodeAppServerClient.connect(cwd, {
       env: process.env,
       reuseExistingBroker: true
     });
@@ -387,7 +387,7 @@ export async function importExternalAgentSession(cwd, options = {}) {
 export async function findLatestTaskThread(cwd) {
   let client = null;
   try {
-    client = await CodexAppServerClient.connect(cwd, { reuseExistingBroker: true });
+    client = await ZCodeAppServerClient.connect(cwd, { reuseExistingBroker: true });
     const result = await client.request("session/list", {});
     const sessions = result?.sessions || [];
     const resolved = path.resolve(cwd);

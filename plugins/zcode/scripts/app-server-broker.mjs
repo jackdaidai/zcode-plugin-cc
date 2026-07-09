@@ -6,7 +6,7 @@ import path from "node:path";
 import process from "node:process";
 
 import { parseArgs } from "./lib/args.mjs";
-import { BROKER_BUSY_RPC_CODE, CodexAppServerClient } from "./lib/app-server.mjs";
+import { BROKER_BUSY_RPC_CODE, ZCodeAppServerClient } from "./lib/app-server.mjs";
 import { parseBrokerEndpoint } from "./lib/broker-endpoint.mjs";
 
 // ZCode Protocol: `session/send` is the fire-and-forget turn method. Its result returns
@@ -39,7 +39,11 @@ function send(socket, message) {
   if (socket.destroyed) {
     return;
   }
-  socket.write(`${JSON.stringify(message)}\n`);
+  try {
+    socket.write(`${JSON.stringify(message)}\n`);
+  } catch {
+    // A half-open socket can throw on write; its close/error handler clears ownership.
+  }
 }
 
 function isInterruptRequest(message) {
@@ -75,7 +79,7 @@ async function main() {
   const pidFile = options["pid-file"] ? path.resolve(options["pid-file"]) : null;
   writePidFile(pidFile);
 
-  const appClient = await CodexAppServerClient.connect(cwd, { disableBroker: true });
+  const appClient = await ZCodeAppServerClient.connect(cwd, { disableBroker: true });
   let activeRequestSocket = null;
   let activeStreamSocket = null;
   let activeStreamThreadIds = null;

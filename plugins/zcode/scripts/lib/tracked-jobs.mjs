@@ -3,7 +3,10 @@ import process from "node:process";
 
 import { readJobFile, resolveJobFile, resolveJobLogFile, upsertJob, writeJobFile } from "./state.mjs";
 
-export const SESSION_ID_ENV = "CODEX_COMPANION_SESSION_ID";
+export const SESSION_ID_ENV = "ZCODE_COMPANION_SESSION_ID";
+// Legacy name written by pre-rename hooks; still honored so sessions started
+// before an upgrade keep filtering correctly.
+export const LEGACY_SESSION_ID_ENV = "CODEX_COMPANION_SESSION_ID";
 
 export function nowIso() {
   return new Date().toISOString();
@@ -59,7 +62,9 @@ export function createJobLogFile(workspaceRoot, jobId, title) {
 
 export function createJobRecord(base, options = {}) {
   const env = options.env ?? process.env;
-  const sessionId = env[options.sessionIdEnv ?? SESSION_ID_ENV];
+  const sessionId = options.sessionIdEnv
+    ? env[options.sessionIdEnv]
+    : env[SESSION_ID_ENV] ?? env[LEGACY_SESSION_ID_ENV];
   return {
     ...base,
     createdAt: nowIso(),

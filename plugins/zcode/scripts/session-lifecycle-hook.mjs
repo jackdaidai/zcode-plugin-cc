@@ -7,6 +7,8 @@ import { terminateProcessTree } from "./lib/process.mjs";
 import { BROKER_ENDPOINT_ENV } from "./lib/app-server.mjs";
 import {
   clearBrokerSession,
+  LEGACY_LOG_FILE_ENV,
+  LEGACY_PID_FILE_ENV,
   LOG_FILE_ENV,
   loadBrokerSession,
   PID_FILE_ENV,
@@ -15,9 +17,8 @@ import {
 } from "./lib/broker-lifecycle.mjs";
 import { loadState, resolveStateFile, saveState } from "./lib/state.mjs";
 import { TRANSCRIPT_PATH_ENV } from "./lib/claude-session-transfer.mjs";
+import { LEGACY_SESSION_ID_ENV, SESSION_ID_ENV } from "./lib/tracked-jobs.mjs";
 import { resolveWorkspaceRoot } from "./lib/workspace.mjs";
-
-export const SESSION_ID_ENV = "CODEX_COMPANION_SESSION_ID";
 const PLUGIN_DATA_ENV = "CLAUDE_PLUGIN_DATA";
 
 function readHookInput() {
@@ -87,8 +88,8 @@ async function handleSessionEnd(input) {
     (process.env[BROKER_ENDPOINT_ENV]
       ? {
           endpoint: process.env[BROKER_ENDPOINT_ENV],
-          pidFile: process.env[PID_FILE_ENV] ?? null,
-          logFile: process.env[LOG_FILE_ENV] ?? null
+          pidFile: process.env[PID_FILE_ENV] ?? process.env[LEGACY_PID_FILE_ENV] ?? null,
+          logFile: process.env[LOG_FILE_ENV] ?? process.env[LEGACY_LOG_FILE_ENV] ?? null
         }
       : null);
   const brokerEndpoint = brokerSession?.endpoint ?? null;
@@ -101,7 +102,7 @@ async function handleSessionEnd(input) {
     await sendBrokerShutdown(brokerEndpoint);
   }
 
-  cleanupSessionJobs(cwd, input.session_id || process.env[SESSION_ID_ENV]);
+  cleanupSessionJobs(cwd, input.session_id || process.env[SESSION_ID_ENV] || process.env[LEGACY_SESSION_ID_ENV]);
   teardownBrokerSession({
     endpoint: brokerEndpoint,
     pidFile,

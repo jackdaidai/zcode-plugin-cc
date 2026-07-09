@@ -9,11 +9,14 @@ import { createBrokerEndpoint, parseBrokerEndpoint } from "./broker-endpoint.mjs
 import { terminateProcessTree } from "./process.mjs";
 import { resolveStateDir } from "./state.mjs";
 
-export const PID_FILE_ENV = "CODEX_COMPANION_APP_SERVER_PID_FILE";
-export const LOG_FILE_ENV = "CODEX_COMPANION_APP_SERVER_LOG_FILE";
+export const PID_FILE_ENV = "ZCODE_COMPANION_APP_SERVER_PID_FILE";
+export const LOG_FILE_ENV = "ZCODE_COMPANION_APP_SERVER_LOG_FILE";
+// Legacy names from the Codex original; still honored for in-flight sessions.
+export const LEGACY_PID_FILE_ENV = "CODEX_COMPANION_APP_SERVER_PID_FILE";
+export const LEGACY_LOG_FILE_ENV = "CODEX_COMPANION_APP_SERVER_LOG_FILE";
 const BROKER_STATE_FILE = "broker.json";
 
-export function createBrokerSessionDir(prefix = "cxc-") {
+export function createBrokerSessionDir(prefix = "zcc-") {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
 }
 

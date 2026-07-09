@@ -2,7 +2,7 @@ import fs from "node:fs";
 
 import { getSessionRuntimeStatus } from "./zcode.mjs";
 import { getConfig, listJobs, readJobFile, resolveJobFile } from "./state.mjs";
-import { SESSION_ID_ENV } from "./tracked-jobs.mjs";
+import { LEGACY_SESSION_ID_ENV, SESSION_ID_ENV } from "./tracked-jobs.mjs";
 import { resolveWorkspaceRoot } from "./workspace.mjs";
 
 export const DEFAULT_MAX_STATUS_JOBS = 8;
@@ -13,7 +13,13 @@ export function sortJobsNewestFirst(jobs) {
 }
 
 function getCurrentSessionId(options = {}) {
-  return options.env?.[SESSION_ID_ENV] ?? process.env[SESSION_ID_ENV] ?? null;
+  return (
+    options.env?.[SESSION_ID_ENV] ??
+    process.env[SESSION_ID_ENV] ??
+    options.env?.[LEGACY_SESSION_ID_ENV] ??
+    process.env[LEGACY_SESSION_ID_ENV] ??
+    null
+  );
 }
 
 function filterJobsForCurrentSession(jobs, options = {}) {
@@ -122,8 +128,14 @@ function inferLegacyJobPhase(job, progressPreview = []) {
 
   for (let index = progressPreview.length - 1; index >= 0; index -= 1) {
     const line = progressPreview[index].toLowerCase();
-    if (line.startsWith("starting codex") || line.startsWith("thread ready") || line.startsWith("turn started")) {
+    if (line.startsWith("starting ") || line.startsWith("thread ready") || line.startsWith("turn started")) {
       return "starting";
+    }
+    if (line.startsWith("zcode turn prompt_completed") || line.startsWith("zcode turn prompt_cancelled")) {
+      return "finalizing";
+    }
+    if (line.startsWith("zcode turn prompt_failed")) {
+      return "failed";
     }
     if (line.startsWith("reviewer started") || line.includes("review mode")) {
       return "reviewing";
@@ -150,7 +162,7 @@ function inferLegacyJobPhase(job, progressPreview = []) {
     if (line.startsWith("turn completed")) {
       return "finalizing";
     }
-    if (line.startsWith("codex error:") || line.startsWith("failed:")) {
+    if (line.startsWith("zcode error:") || line.startsWith("failed:")) {
       return "failed";
     }
   }
