@@ -11,6 +11,10 @@ Use this skill only inside the `zcode:zcode-rescue` subagent.
 Primary helper:
 - `node "${CLAUDE_PLUGIN_ROOT}/scripts/zcode-companion.mjs" task "<raw arguments>"`
 
+Passing the prompt:
+- Short single-line prompts without quotes, backticks, or `$` may be passed inline as the positional argument.
+- For anything longer or containing those characters, use the `Write` tool to save the exact task text to a temp file, then call `task --prompt-file "<path>"`. Never build the prompt file with a shell heredoc or `echo`/`printf` chains — shell quoting of large prompts is unreliable, especially on Windows Git Bash.
+
 Execution rules:
 - The rescue subagent is a forwarder, not an orchestrator. Its only job is to invoke `task` once and return that stdout unchanged.
 - Prefer the helper over hand-rolled `git`, direct ZCode CLI strings, or any other Bash activity.
