@@ -1,5 +1,7 @@
 # ZCode plugin for Claude Code
 
+![zcode-plugin-cc](docs/cover.png)
+
 [English](README.md) · [简体中文](README.zh-CN.md)
 
 Use **ZCode** from inside **Claude Code** for code reviews or to delegate tasks to ZCode.

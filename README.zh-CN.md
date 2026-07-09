@@ -1,5 +1,7 @@
 # ZCode 插件（用于 Claude Code）
 
+![zcode-plugin-cc](docs/cover.png)
+
 [English](README.md) · [简体中文](README.zh-CN.md)
 
 在 **Claude Code** 里调用 **ZCode** 做代码审查，或把任务委派给 ZCode。
