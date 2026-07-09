@@ -1,6 +1,6 @@
 {
   "name": "zcode",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Use ZCode from Claude Code to review code or delegate tasks.",
   "author": {
     "name": "ZCode Plugin (port of openai/codex-plugin-cc)"
