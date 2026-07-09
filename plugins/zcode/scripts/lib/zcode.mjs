@@ -31,8 +31,15 @@ export const DEFAULT_CONTINUE_PROMPT =
 // ZCode state.updated reasons that mark the end of a turn.
 const TURN_COMPLETE_REASONS = new Set(["prompt_completed", "prompt_cancelled", "prompt_failed"]);
 // Safety upper bound for a single turn. If the server never emits a completion reason
-// (model hang, dropped connection), we still resolve so the CLI never hangs forever.
-const DEFAULT_TURN_TIMEOUT_MS = 15 * 60 * 1000;
+// (model hang, dropped connection, provider rate-limit retries stretching the turn), we
+// still resolve so the CLI never hangs forever. Heavy implementation tasks routinely run
+// past 15 minutes, so the default is generous; override with ZCODE_TURN_TIMEOUT_MS (ms).
+const DEFAULT_TURN_TIMEOUT_MS = 60 * 60 * 1000;
+
+export function resolveTurnTimeoutMs(env = process.env) {
+  const parsed = Number.parseInt(env?.ZCODE_TURN_TIMEOUT_MS ?? "", 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_TURN_TIMEOUT_MS;
+}
 
 /**
  * Check that the `zcode` CLI is installed and exposes the app-server subcommand.
@@ -148,10 +155,12 @@ async function createWorkspaceSession(client, cwd) {
  * Send a prompt to a session and wait for the turn to complete by watching
  * state.updated notifications. Returns the final session/read snapshot.
  */
-async function runTurnToCompletion(client, { sessionId, content, onProgress = null, timeoutMs = DEFAULT_TURN_TIMEOUT_MS }) {
+async function runTurnToCompletion(client, { sessionId, content, onProgress = null, timeoutMs = resolveTurnTimeoutMs() }) {
   let turnId = null;
   let completed = false;
   let completeReason = null;
+  let timedOut = false;
+  let failureDetail = null;
 
   const completion = new Promise((resolve) => {
     const previousHandler = client.notificationHandler;
@@ -175,6 +184,13 @@ async function runTurnToCompletion(client, { sessionId, content, onProgress = nu
         }
         const reason = params.reason;
         const status = params.patch?.status;
+        // Best-effort capture of a failure detail if the server attaches one; the field is
+        // not part of the confirmed protocol surface, so tolerate any shape.
+        const errorDetail = params.patch?.error ?? params.error ?? null;
+        if (errorDetail) {
+          failureDetail =
+            typeof errorDetail === "string" ? errorDetail : errorDetail.message ?? JSON.stringify(errorDetail);
+        }
         if (onProgress) {
           onProgress({
             message: status === "running" ? "ZCode turn running…" : `ZCode turn ${reason || status}`,
@@ -195,14 +211,25 @@ async function runTurnToCompletion(client, { sessionId, content, onProgress = nu
 
     // Safety net: if the server never emits a completion reason, resolve anyway so the CLI
     // never hangs forever. The read() below will return whatever output exists.
-    setTimeout(finish, timeoutMs).unref?.();
+    setTimeout(() => {
+      if (!settled) {
+        timedOut = true;
+        onProgress?.({
+          message: `ZCode turn timed out after ${formatTimeoutMinutes(timeoutMs)} minutes of waiting (the turn may still be running)`,
+          phase: "timeout",
+          threadId: sessionId,
+          turnId
+        });
+      }
+      finish();
+    }, timeoutMs).unref?.();
   });
 
   await client.request("session/send", { sessionId, content });
   await completion;
 
   const snapshot = await client.request("session/read", { sessionId });
-  return { snapshot, turnId, completed, completeReason };
+  return { snapshot, turnId, completed, completeReason, timedOut, failureDetail };
 }
 
 function extractAssistantText(messages) {
@@ -257,6 +284,32 @@ function buildResultStatus({ completed, completeReason }) {
   return "completed";
 }
 
+function formatTimeoutMinutes(timeoutMs) {
+  return Math.max(1, Math.round(timeoutMs / 60000));
+}
+
+// The message an orchestrator sees when a turn fails without output. It must distinguish
+// "we stopped waiting" (turn may still be running — often provider rate limiting) from
+// "ZCode reported failure", so callers can pick the right recovery (resume vs fallback).
+export function buildTurnFailureMessage({ timedOut, completeReason, failureDetail, timeoutMs }) {
+  if (timedOut) {
+    return (
+      `ZCode turn did not complete within ${formatTimeoutMinutes(timeoutMs)} minutes and the wait was abandoned — ` +
+      "the turn may still be running (e.g. provider rate limiting with retries, or a long task). " +
+      "Check ~/.zcode/cli/log for the underlying cause (e.g. 429 rate limits), retry with --resume-last, " +
+      "or raise the limit via ZCODE_TURN_TIMEOUT_MS."
+    );
+  }
+  const detail = failureDetail ? `: ${failureDetail}` : "";
+  if (completeReason === "prompt_failed") {
+    return (
+      `ZCode reported the turn as failed (prompt_failed${detail}). ` +
+      "Check ~/.zcode/cli/log for the underlying error (e.g. provider rate limits)."
+    );
+  }
+  return `ZCode turn failed to produce output${detail}.`;
+}
+
 /**
  * Run a single ZCode turn (the equivalent of Codex's runAppServerTurn).
  *
@@ -290,10 +343,12 @@ export async function runAppServerTurn(cwd, options = {}) {
       throw new Error("No prompt provided for the ZCode turn.");
     }
 
-    const { snapshot, turnId, completed, completeReason } = await runTurnToCompletion(client, {
+    const timeoutMs = resolveTurnTimeoutMs();
+    const { snapshot, turnId, completed, completeReason, timedOut, failureDetail } = await runTurnToCompletion(client, {
       sessionId,
       content: prompt,
-      onProgress: options.onProgress
+      onProgress: options.onProgress,
+      timeoutMs
     });
 
     const messages = snapshot.messages || [];
@@ -307,7 +362,10 @@ export async function runAppServerTurn(cwd, options = {}) {
       finalMessage,
       reasoningSummary: extractReasoningSummary(messages),
       touchedFiles: extractTouchedFiles(messages),
-      error: status === "failed" && !finalMessage ? new Error("ZCode turn failed to produce output.") : null
+      error:
+        status === "failed" && !finalMessage
+          ? new Error(buildTurnFailureMessage({ timedOut, completeReason, failureDetail, timeoutMs }))
+          : null
     };
   } catch (error) {
     return {
