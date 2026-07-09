@@ -30,6 +30,9 @@ export const DEFAULT_CONTINUE_PROMPT =
 
 // ZCode state.updated reasons that mark the end of a turn.
 const TURN_COMPLETE_REASONS = new Set(["prompt_completed", "prompt_cancelled", "prompt_failed"]);
+// Safety upper bound for a single turn. If the server never emits a completion reason
+// (model hang, dropped connection), we still resolve so the CLI never hangs forever.
+const DEFAULT_TURN_TIMEOUT_MS = 15 * 60 * 1000;
 
 /**
  * Check that the `zcode` CLI is installed and exposes the app-server subcommand.
@@ -145,16 +148,25 @@ async function createWorkspaceSession(client, cwd) {
  * Send a prompt to a session and wait for the turn to complete by watching
  * state.updated notifications. Returns the final session/read snapshot.
  */
-async function runTurnToCompletion(client, { sessionId, content, onProgress = null, signal = null }) {
+async function runTurnToCompletion(client, { sessionId, content, onProgress = null, timeoutMs = DEFAULT_TURN_TIMEOUT_MS }) {
   let turnId = null;
   let completed = false;
   let completeReason = null;
 
-  const completion = new Promise((resolve, reject) => {
+  const completion = new Promise((resolve) => {
     const previousHandler = client.notificationHandler;
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      client.setNotificationHandler(previousHandler);
+      resolve();
+    };
+
     client.setNotificationHandler((message) => {
       if (message.method === "state.updated") {
         const params = message.params || {};
+        // Ignore state updates for other sessions on a shared broker connection.
         if (params.sessionId && params.sessionId !== sessionId) {
           return;
         }
@@ -174,19 +186,16 @@ async function runTurnToCompletion(client, { sessionId, content, onProgress = nu
         if (TURN_COMPLETE_REASONS.has(reason) || (status === "idle" && reason && reason !== "prompt_started")) {
           completed = true;
           completeReason = reason;
-          client.setNotificationHandler(previousHandler);
-          resolve();
+          finish();
         }
         return;
       }
       previousHandler?.(message);
     });
-    if (signal) {
-      signal.addEventListener("once", () => {
-        client.setNotificationHandler(previousHandler);
-        reject(new Error("Turn interrupted."));
-      });
-    }
+
+    // Safety net: if the server never emits a completion reason, resolve anyway so the CLI
+    // never hangs forever. The read() below will return whatever output exists.
+    setTimeout(finish, timeoutMs).unref?.();
   });
 
   await client.request("session/send", { sessionId, content });
